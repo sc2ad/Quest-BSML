@@ -242,8 +242,7 @@ namespace BeatSaberMarkupLanguage
                 end = str.find_first_of(sep, start);
                 ret.append(str.substr(start, end))
                 start = end + 1;
-            }
-            while (end != std::string_view::npos);
+            } while (end != std::string_view::npos);
             return ret;
         }
 
