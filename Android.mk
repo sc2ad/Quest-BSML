@@ -25,7 +25,7 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_LDLIBS     += -llog
-LOCAL_CFLAGS     += -DMOD_ID='"BSML"' -DVERSION='"1.3.2.0"' -I'C:\Unity\2019.3.2f1\Editor\Data\il2cpp\libil2cpp'
+LOCAL_CFLAGS     += -DMOD_ID='"BSML"' -DVERSION='"1.3.2"' -I'C:\Unity\2019.3.2f1\Editor\Data\il2cpp\libil2cpp'
 LOCAL_MODULE     := BSML
 LOCAL_C_INCLUDES := ./include ./src
 LOCAL_SRC_FILES  := $(call rwildcard,extern/beatsaber-hook/shared/inline-hook/,*.cpp) $(call rwildcard,extern/beatsaber-hook/shared/utils/,*.cpp) $(call rwildcard,extern/beatsaber-hook/shared/inline-hook/,*.c) $(call rwildcard,extern/questui/,*.cpp)

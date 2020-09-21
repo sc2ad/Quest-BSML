@@ -35,6 +35,7 @@
 #include "extern/beatsaber-hook/shared/utils/il2cpp-functions.hpp"
 #include "extern/beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 
+// `defer { statement; };` causes `statement` to be executed when the current scope is exitted
 #ifndef defer
 struct defer_dummy {};
 template <class F> struct deferrer { F f; ~deferrer() { f(); } };
@@ -72,8 +73,8 @@ namespace BeatSaberMarkupLanguage
             Il2CppString* res = il2cpp_utils::createcsstr(resource);
             Il2CppString* content;
             // equivalent of "using"
-            { auto* stream = assembly->GetManifestResourceStream(res); defer { stream->Close(); };
-                { auto* reader = System::IO::StreamReader::New_ctor(stream); defer { reader->Close(); };
+            { auto* stream = assembly->GetManifestResourceStream(res); defer { stream->Dispose(); };
+                { auto* reader = System::IO::StreamReader::New_ctor(stream); defer { reader->Dispose(); };
                     content = reader->ReadToEnd();
                 }
             }
@@ -212,11 +213,9 @@ namespace BeatSaberMarkupLanguage
 
         static UnityEngine::Texture2D* FindTextureInAssembly(std::string_view path) {
             try {
-                System::Reflection::Assembly* asm;
-                Il2CppString* newPath;
-                (asm, newPath) = AssemblyFromPath(path);
-                if (asm->GetManifestResourceNames()->Contains(newPath))
-                    return LoadTextureRaw(GetResource(asm, newPath));
+                auto [assembly, newPath] = AssemblyFromPath(path);
+                if (assembly->GetManifestResourceNames()->Contains(newPath))
+                    return LoadTextureRaw(GetResource(assembly, newPath));
             } catch {
                 logger().error("Unable to find texture in assembly! (You must prefix path with 'assembly name:' if the assembly "
                     "and root namespace don't have the same name)");
@@ -226,11 +225,9 @@ namespace BeatSaberMarkupLanguage
 
         static UnityEngine::Sprite* FindSpriteInAssembly(std::string_view path) {
             try {
-                System::Reflection::Assembly* asm;
-                Il2CppString* newPath;
-                (asm, newPath) = AssemblyFromPath(path);
-                if (asm->GetManifestResourceNames()->Contains(newPath))
-                    return LoadSpriteRaw(GetResource(asm, newPath));
+                auto [assembly, newPath] = AssemblyFromPath(path);
+                if (assembly->GetManifestResourceNames()->Contains(newPath))
+                    return LoadSpriteRaw(GetResource(assembly, newPath));
             } catch (std::runtime_error& ex) {
                 logger().error("Unable to find UnityEngine::Sprite* in assembly! (You must prefix path with 'assembly name:' if "
                     "the assembly and root namespace don't have the same name) Exception: %s", ex.what());
@@ -250,7 +247,7 @@ namespace BeatSaberMarkupLanguage
             return ret;
         }
 
-        static std::tuple<System::Reflection::Assembly*, Il2CppString*> AssemblyFromPath(std::string_view inputPath) {
+        static std::pair<System::Reflection::Assembly*, Il2CppString*> AssemblyFromPath(std::string_view inputPath) {
             auto parameters = Split(inputPath, ':');
             System::Reflection::Assembly* assembly;
             std::string_view path;
@@ -267,7 +264,7 @@ namespace BeatSaberMarkupLanguage
                 default:
                     throw std::runtime_error(string_format("Could not process resource path '%s'", inputPath.data()).c_str());
             }
-            return make_tuple(assembly, il2cpp_utils::createcsstr(path));
+            return make_pair(assembly, il2cpp_utils::createcsstr(path));
         }
 
         static UnityEngine::Texture2D* LoadTextureRaw(::Array<uint8_t>* file) {
@@ -293,8 +290,8 @@ namespace BeatSaberMarkupLanguage
             return nullptr;
         }
 
-        static ::Array<uint8_t>* GetResource(System::Reflection::Assembly* asm, Il2CppString* ResourceName) {
-            System::IO::Stream* stream = asm->GetManifestResourceStream(ResourceName);
+        static ::Array<uint8_t>* GetResource(System::Reflection::Assembly* assembly, Il2CppString* ResourceName) {
+            System::IO::Stream* stream = assembly->GetManifestResourceStream(ResourceName);
             il2cpp_functions::CheckS_GlobalMetadata();
             auto* data = (::Array<uint8_t>)il2cpp_functions::array_new_specific(
                 il2cpp_functions::defaults->byte_class, stream->Length());
@@ -311,7 +308,7 @@ namespace BeatSaberMarkupLanguage
         // port of System::IO::File::ReadAllBytes, which was stripped from our .so's
         static ::Array<uint8_t>* ReadAllBytes(Il2CppString* path) {
 			::Array<uint8_t>* result = nullptr;
-            { auto* fileStream = System::IO::File::OpenRead(path); defer { fileStream->Close(); };
+            { auto* fileStream = System::IO::File::OpenRead(path); defer { fileStream->Dispose(); };
 				int64_t length = fileStream->get_Length();
 				if (length > 2147483647L)
                     throw std::runtime_error("Reading more than 2GB with this call is not supported");
@@ -347,8 +344,8 @@ namespace BeatSaberMarkupLanguage
                     if (System::IO::File::Exists(locationStr)) {
                         if (callback) callback(ReadAllBytes(locationStr));
                     } else {
-                        auto (asm, newPath) = AssemblyFromPath(location);
-                        if (callback) callback(GetResource(asm, newPath));
+                        auto [assembly, newPath] = AssemblyFromPath(location);
+                        if (callback) callback(GetResource(assembly, newPath));
                     }
                 }
             } catch {

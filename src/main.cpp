@@ -11,12 +11,13 @@ const Logger& logger() {
 }
 
 extern "C" void setup(ModInfo& info) {
-    info.id      = "BSML";
-    info.version = "1.3.3";
+    info.id      = MOD_ID;
+    info.version = VERSION;
     modInfo      = info;
     logger().info("Leaving setup!");
 }
 
+// example hooks from TrickSaber
 MAKE_HOOK_OFFSETLESS(Saber_Start, void, Il2CppObject* self) {
     Saber_Start(self);
     int saberType = CRASH_UNLESS(il2cpp_utils::GetPropertyValue<int>(self, "saberType"));
