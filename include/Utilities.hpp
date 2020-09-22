@@ -15,6 +15,7 @@
 #include "extern/codegen/include/System/Collections/Generic/List_1.hpp"
 #include "extern/codegen/include/System/IO/File.hpp"
 #include "extern/codegen/include/System/IO/Stream.hpp"
+#include "extern/codegen/include/System/IO/FileStream.hpp"
 #include "extern/codegen/include/System/IO/StreamReader.hpp"
 #include "extern/codegen/include/System/Linq/Enumerable.hpp"
 #include "extern/codegen/include/System/Reflection/Assembly.hpp"
@@ -30,7 +31,10 @@
 #include "extern/codegen/include/UnityEngine/SpriteMeshType.hpp"
 #include "extern/codegen/include/UnityEngine/Texture2D.hpp"
 #include "extern/codegen/include/UnityEngine/Networking/UnityWebRequest.hpp"
+#include "extern/codegen/include/UnityEngine/Networking/UnityWebRequestAsyncOperation.hpp"
+#include "extern/codegen/include/UnityEngine/Networking/DownloadHandler.hpp"
 #include "extern/codegen/include/UnityEngine/UI/Image.hpp"
+#include "extern/codegen/include/System/Uri.hpp"
 
 #include "extern/beatsaber-hook/shared/utils/il2cpp-functions.hpp"
 #include "extern/beatsaber-hook/shared/utils/il2cpp-utils.hpp"
@@ -74,7 +78,7 @@ namespace BeatSaberMarkupLanguage
             Il2CppString* content;
             // equivalent of "using"
             { auto* stream = assembly->GetManifestResourceStream(res); defer { stream->Dispose(); };
-                { auto* reader = System::IO::StreamReader::New_ctor(stream); defer { reader->Dispose(); };
+                { auto* reader = System::IO::StreamReader::New_ctor(stream); defer { reader->Dispose(true); };
                     content = reader->ReadToEnd();
                 }
             }
@@ -216,7 +220,7 @@ namespace BeatSaberMarkupLanguage
                 auto [assembly, newPath] = AssemblyFromPath(path);
                 if (assembly->GetManifestResourceNames()->Contains(newPath))
                     return LoadTextureRaw(GetResource(assembly, newPath));
-            } catch {
+            } catch (std::runtime_error) {
                 logger().error("Unable to find texture in assembly! (You must prefix path with 'assembly name:' if the assembly "
                     "and root namespace don't have the same name)");
             }
@@ -240,7 +244,7 @@ namespace BeatSaberMarkupLanguage
             size_t start = 0, end;
             do {
                 end = str.find_first_of(sep, start);
-                ret.append(str.substr(start, end))
+                ret.emplace_back(str.substr(start, end));
                 start = end + 1;
             } while (end != std::string_view::npos);
             return ret;
@@ -254,22 +258,22 @@ namespace BeatSaberMarkupLanguage
             {
                 case 1:
                     path = parameters[0];
-                    assembly = System::Reflection::Assembly::Load(path.substr(0, path.find_first_of('.')));
+                    assembly = System::Reflection::Assembly::Load(il2cpp_utils::createcsstr(path.substr(0, path.find_first_of('.'))));
                     break;
                 case 2:
                     path = parameters[1];
-                    assembly = System::Reflection::Assembly::Load(parameters[0]);
+                    assembly = System::Reflection::Assembly::Load(il2cpp_utils::createcsstr(parameters[0]));
                     break;
                 default:
                     throw std::runtime_error(string_format("Could not process resource path '%s'", inputPath.data()).c_str());
             }
-            return make_pair(assembly, il2cpp_utils::createcsstr(path));
+            return std::make_pair(assembly, il2cpp_utils::createcsstr(path));
         }
 
         static UnityEngine::Texture2D* LoadTextureRaw(::Array<uint8_t>* file) {
             if (file->Length() > 0) {
                 auto* Tex2D = UnityEngine::Texture2D::New_ctor(2, 2);
-                if (UnityEngine::ImageConversion::LoadImage(Tex2D, file))
+                if (UnityEngine::ImageConversion::LoadImage(Tex2D, file, false))
                     return Tex2D;
             }
             return nullptr;
@@ -292,9 +296,9 @@ namespace BeatSaberMarkupLanguage
         static ::Array<uint8_t>* GetResource(System::Reflection::Assembly* assembly, Il2CppString* ResourceName) {
             System::IO::Stream* stream = assembly->GetManifestResourceStream(ResourceName);
             il2cpp_functions::CheckS_GlobalMetadata();
-            auto* data = (::Array<uint8_t>)il2cpp_functions::array_new_specific(
-                il2cpp_functions::defaults->byte_class, stream->Length());
-            stream->Read(data, 0, stream->Length());
+            auto* data = (::Array<uint8_t>*)il2cpp_functions::array_new_specific(
+                il2cpp_functions::defaults->byte_class, stream->get_Length());
+            stream->Read(data, 0, stream->get_Length());
             return data;
         }
 
@@ -307,14 +311,14 @@ namespace BeatSaberMarkupLanguage
         // port of System::IO::File::ReadAllBytes, which was stripped from our .so's
         static ::Array<uint8_t>* ReadAllBytes(Il2CppString* path) {
 			::Array<uint8_t>* result = nullptr;
-            { auto* fileStream = System::IO::File::OpenRead(path); defer { fileStream->Dispose(); };
+            { auto* fileStream = System::IO::File::OpenRead(path); defer { fileStream->Dispose(true); };
 				int64_t length = fileStream->get_Length();
 				if (length > 2147483647L)
                     throw std::runtime_error("Reading more than 2GB with this call is not supported");
 				int num = 0;
 				int i = (int)length;
-				auto* array = (::Array<uint8_t>)il2cpp_functions::array_new_specific(
-                    il2cpp_functions::defaults->byte_class, stream->Length());
+				auto* array = (::Array<uint8_t>*)il2cpp_functions::array_new_specific(
+                    il2cpp_functions::defaults->byte_class, fileStream->get_Length());
 				while (i > 0) {
 					int num2 = fileStream->Read(array, num, i);
 					if (num2 == 0)
@@ -347,25 +351,25 @@ namespace BeatSaberMarkupLanguage
                         if (callback) callback(GetResource(assembly, newPath));
                     }
                 }
-            } catch {
+            } catch (std::runtime_error) {
                 logger().error("Error getting data from '%s': either invalid path or file does not exist.", location.data());
             }
         }
 
         static void WebRequestComplete(FileDataCallback* callback, UnityEngine::Networking::UnityWebRequestAsyncOperation* op) {
-            auto* www = op->get_webRequest();
+            auto* www = op->webRequest;
             if (www->get_isNetworkError() || www->get_isHttpError()) {
-                logger().error("Error getting data from %s, Message: %s", to_utf8(csstrtostr(www->GetUrl())).data(),
+                logger().error("Error getting data from %s, Message: %s", to_utf8(csstrtostr(www->m_Uri->ToString())).c_str(),
                     to_utf8(csstrtostr(www->get_error())).data());
             } else if (*callback) {
-                (*callback)(www->get_downloadHandler()->get_data());
+                (*callback)(www->get_downloadHandler()->GetData());
             }
             op->Finalize();
         }
 
         static bool SendWebRequest(std::string_view url, FileDataCallback callback) {
             auto* webReq = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::createcsstr(url));
-            auto* asyncOp = www->SendWebRequest();
+            auto* asyncOp = webReq->SendWebRequest();
 
             auto* method = RET_0_UNLESS(il2cpp_utils::FindMethodUnsafe(asyncOp, "add_completed", 1));
             auto* action = RET_0_UNLESS(il2cpp_utils::MakeAction(method, 0, new FileDataCallback(callback), WebRequestComplete));
