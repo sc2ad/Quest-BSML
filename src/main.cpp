@@ -11,7 +11,7 @@ const Logger& logger() {
 }
 
 extern "C" void setup(ModInfo& info) {
-    info.id      = MOD_ID;
+    info.id      = ID;
     info.version = VERSION;
     modInfo      = info;
     logger().info("Leaving setup!");
