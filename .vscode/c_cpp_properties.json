@@ -3,26 +3,16 @@
         {
             "name": "Quest",
             "defines": [
-                "MOD_ID=\"SwingSounds\"",
+                "ID=\"BSML\"",
                 "VERSION=\"0.1.0\"",
                 "__GNUC__",
-                "__aarch64__",
-                "DEBUG=3",
-                "INFO=4",
-                "WARNING=5",
-                "ERROR=6",
-                "CRITICAL=7"
+                "__aarch64__"
             ],
             "includePath": [
-                "C:/android/sdk/ndk/21.3.6528147/sources/cxx-stl/llvm-libc++/include",
-                "C:/android/sdk/ndk/21.3.6528147/sources/cxx-stl/llvm-libc++abi/include",
                 "${workspaceFolder}/**",
-                "C:/Unity/2019.3.2f1/Editor/Data/il2cpp/libil2cpp",
-                "C:/android/sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/local/include",
-                "C:/android/sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/9.0.8/include",
-                "C:/android/sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/aarch64-linux-android",
-                "C:/android/sdk/ndk/21.3.6528147/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include",
-                "C:/android/sdk/ndk/21.3.6528147/**"
+                "${workspaceFolder}/extern/libil2cpp/il2cpp/libil2cpp",
+                "C:/android/sdk/ndk/21.3.6528147/**",
+                "C:/android-ndk-r21d/**"
             ],
             "cStandard": "gnu18",
             "cppStandard": "gnu++20",
